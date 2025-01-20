@@ -1,26 +1,61 @@
-import { createOpenAI as createGroq } from '@ai-sdk/openai';
+import Groq from "groq-sdk";
 import { streamText } from 'ai';
-// Allow streaming responses up to 30 seconds
+
 export const maxDuration = 30;
-const groq = createGroq({
-  baseURL: 'https://api.groq.com/openai/v1',
-  apiKey: process.env.GROQ_AI_KEY!,
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_AI_KEY,
 });
+
 export async function POST(req: Request): Promise<Response> {
   try {
     // Parse the request body to extract messages
     const body = await req.json();
-    const { messages }= body;
-    // Stream text response using the specified model
-    const result = streamText({
-      model: groq('llama-3.1-405b-reasoning'),
-      messages,
+    const { messages } = body;
+
+    if (!Array.isArray(messages)) {
+      console.error('Invalid "messages" format:', messages);
+      return new Response(
+        JSON.stringify({ error: 'Invalid request: "messages" must be an array of objects.' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Ensure messages are properly formatted
+    for (const message of messages) {
+      if (!message.role || !message.content) {
+        console.error('Malformed message:', message);
+        return new Response(
+          JSON.stringify({ error: 'Each message must have "role" and "content" fields.' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Make a request to Groq's chat completion
+    const completion = await groq.chat.completions.create({
+      messages: [
+        ...messages,
+        { role: 'user', content: 'Now complete this sentence and give the final sentence.' },
+      ],
+      model: "llama-3.3-70b-versatile",
     });
+
+    // Stream the response back
+    // const result = streamText({
+    //   model: "llama-3.3-70b-versatile",
+    //   messages: completion.choices[0].message.content,
+    // });
+
     // Return the result as a streaming response
-    return result.toDataStreamResponse();
+    // return result.toDataStreamResponse();
+    return Response.json({
+      success:true,
+      content:completion
+    })
   } catch (error: unknown) {
     console.error('Error occurred while processing request:', error);
-    // Return a JSON response with the error message and status code 500
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({
