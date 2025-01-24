@@ -1,7 +1,4 @@
 import Groq from "groq-sdk";
-import { streamText } from 'ai';
-
-export const maxDuration = 30;
 
 const groq = new Groq({
   apiKey: process.env.GROQ_AI_KEY,
@@ -14,58 +11,64 @@ export async function POST(req: Request): Promise<Response> {
     const { messages } = body;
 
     if (!Array.isArray(messages)) {
-      console.error('Invalid "messages" format:', messages);
       return new Response(
         JSON.stringify({ error: 'Invalid request: "messages" must be an array of objects.' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Ensure messages are properly formatted
-    for (const message of messages) {
-      if (!message.role || !message.content) {
-        console.error('Malformed message:', message);
-        return new Response(
-          JSON.stringify({ error: 'Each message must have "role" and "content" fields.' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    // Make a request to Groq's chat completion
-    const completion = await groq.chat.completions.create({
-      messages: [
-        ...messages,
-        { role: 'user', content: 'Now complete this sentence and give the final sentence.' },
+    // Create a stream from the Groq API
+    const stream = await groq.chat.completions.create({
+      messages:[
+        { role: 'system', content: "Create a list of three open-ended and engaging questions formatted as a single string. Each question should be separated by '||'. These questions are for an anonymous social messaging platform, like Qooh.me, and should be suitable for a diverse audience. Avoid personal or sensitive topics, focusing instead on universal themes that encourage friendly interaction. For example, your output should be structured like this: 'What's a hobby you've recently started?||If you could have dinner with any historical figure, who would it be?||What's a simple thing that makes you happy?'. Ensure the questions are intriguing, foster curiosity, and contribute to a positive and welcoming conversational environment."},
       ],
       model: "llama-3.3-70b-versatile",
+      temperature: 0.5,
+      max_completion_tokens: 1024,
+      top_p: 1,
+      stop: ", 6",
+      stream: true, // Enable streaming
     });
 
-    // Stream the response back
-    // const result = streamText({
-    //   model: "llama-3.3-70b-versatile",
-    //   messages: completion.choices[0].message.content,
-    // });
+    // Stream response to the client
+    const responseStream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content || "";
 
-    // Return the result as a streaming response
-    // return result.toDataStreamResponse();
-    return Response.json({
-      success:true,
-      content:completion
-    })
-  } catch (error: unknown) {
-    console.error('Error occurred while processing request:', error);
+            // Enqueue each streamed token to the client
+            controller.enqueue(new TextEncoder().encode(content));
+          }
+          controller.close(); // Close the stream when complete
+        } catch (error) {
+          console.error("Error while streaming:", error);
+          controller.error(error); // Signal an error in the stream
+        }
+      },
+    });
 
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(responseStream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Transfer-Encoding": "chunked", // Ensure the client knows it's receiving a streamed response
+      },
+    });
+  } catch (error) {
+    console.error("Error occurred while processing request:", error);
+
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
       JSON.stringify({
-        error: 'An error occurred while processing your request.',
+        error: "An error occurred while processing your request.",
         details: errorMessage,
       }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
 }
+
+
