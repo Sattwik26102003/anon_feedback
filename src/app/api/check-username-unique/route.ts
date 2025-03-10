@@ -22,8 +22,7 @@ export async function GET(reqest:Request){
            const usernameError=result.error.format().username?._errors || [];
            return Response.json({
                success:false,
-               message:"invalid username",
-               usernameError
+               message:usernameError?.length>0?usernameError.join(","):"invalid username",
            },
            {
                status:400
@@ -48,7 +47,7 @@ export async function GET(reqest:Request){
         })
 
     } catch (error) {
-        console.log("error checking username",error);
+        console.log("error checking username bitch",error);
         return Response.json({
             success:false,
             message:"error checking username"
