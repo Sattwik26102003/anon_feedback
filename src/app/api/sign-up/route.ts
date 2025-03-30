@@ -25,7 +25,7 @@ export async function POST(request:Request){
             email,
             isVerified:true
         })
-        const verifyCode= Math.random().toString(36).slice(2)
+        const verifyCode = Math.random().toString(36).slice(2, 8);
         if(existingUserVerifiedByEmail){
             if(existingUserVerifiedByEmail.isVerified){
                 return Response.json({

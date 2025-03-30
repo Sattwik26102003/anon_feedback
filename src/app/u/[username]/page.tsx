@@ -1,9 +1,10 @@
+'use client'
 import React from 'react'
 
 const page = () => {
   return (
     <div>
-        message page
+        <h1>Public profile page</h1>
     </div>
   )
 }

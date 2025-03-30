@@ -1,10 +1,15 @@
-import nodemailer from 'nodemailer'
-import env from 'dotenv'
-env.config()
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
 export const transporter = nodemailer.createTransport({
-    service: 'gmail', // Change this if using another provider
+    service: 'gmail',
     auth: {
-      user: process.env.EMAIL, // Your email
-      pass: process.env.PASSWORD, // App password (not your actual password)
+        user: process.env.EMAIL,
+        pass: process.env.PASSWORD, // Use an App Password, not your regular password
     },
-  });
+    tls: {
+        rejectUnauthorized: false, // Prevents TLS issues
+    },
+});

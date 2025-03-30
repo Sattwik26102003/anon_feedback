@@ -17,12 +17,12 @@ export const authOptions: NextAuthOptions = {
                 // Add logic here to look up the user from the credentials supplied
                 await dbConnect();
                 try {
-                    const user=await UserModel.findOne({ 
+                    const user = await UserModel.findOne({ 
                         $or: [
-                            {email: credentials.identifer},
-                            {username: credentials.identifer}
+                            { email: credentials.identifier }, 
+                            { username: credentials.identifier }
                         ]
-                     });
+                    });                    
                      if (!user) {
                         throw new Error('No user found')
                      }
@@ -30,8 +30,8 @@ export const authOptions: NextAuthOptions = {
                         throw new Error('User is not verified')
                      }
                     const isPasswordCorrect= await bcrypt.compare(credentials.password, user.password)
-                    if (isPasswordCorrect) {
-                        return user
+                    if (!isPasswordCorrect) {
+                        throw new Error("Invalid credentials");
                     }
                     else{
                         return user;
@@ -51,15 +51,16 @@ export const authOptions: NextAuthOptions = {
     },
     secret: process.env.SECRET,
     callbacks:{
-        async session({ session,  token }) {
+        async session({ session, token }) {
             if (token) {
-                session.user._id=token.id
-                session.user.isVerified=token.isVerified;
-                session.user.isAcceptingMessages=token.isAcceptingMessages;
-                session.user.username=token.username;     
+                session.user = session.user || {}; // Ensure session.user exists
+                session.user._id = token.id;
+                session.user.isVerified = token.isVerified;
+                session.user.isAcceptingMessages = token.isAcceptingMessages;
+                session.user.username = token.username;
             }
             return session;
-        },
+        },        
           async jwt({ token, user }) {
             if(user){
                 token.id=user._id?.toString()
