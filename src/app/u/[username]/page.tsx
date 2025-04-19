@@ -15,7 +15,21 @@ const page = () => {
     }
   })
   function onSubmit(data: any) {
-    console.log(data)
+    try {
+      axios.post('/api/send-message', {username,content: data.message })
+        .then((response) => {
+          console.log(response.data)
+          alert('Message sent successfully')
+        })
+        .catch((error) => {
+          console.error('Error sending message:', error)
+          alert('Failed to send message')
+        })
+    }
+    catch (error) {
+      console.error('Error:', error)
+      alert('Failed to send message')   
+    }
     setValue('message', '')
     
   }

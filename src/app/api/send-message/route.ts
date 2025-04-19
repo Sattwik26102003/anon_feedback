@@ -31,10 +31,10 @@ export async function POST(request:Request){
         }
         const newMessage={content,createdAt:new Date()}
         user.message.push(newMessage as Message)
-        await user.save
+        await user.save()
         return Response.json(
             {
-                success:false
+                success:true
             }
         )
     } catch (error) {
